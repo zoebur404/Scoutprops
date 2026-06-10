@@ -1,24 +1,24 @@
 # StatScout
 
-**Live site:** [statscout.vercel.app](https://statscout.vercel.app)
+**Status:** 🚧 In Development (Not Yet Deployed)
 
-A multi-sport analytics platform that aggregates historical performance data and live betting lines to generate hit rates, trust scores, and prop recommendations across NBA, Premier League, La Liga, Bundesliga, Serie A, and Ligue 1.
+A multi-sport analytics platform designed to aggregate historical performance data and live betting lines to generate hit rates, trust scores, and prop recommendations across NBA and European soccer leagues.
 
 ---
 
-## What it does
+## What it will do
 
-Most prop tools show you a line and a hit rate. StatScout goes further:
+StatScout is being built to go beyond basic prop tools that just show a line and hit rate:
 
 - **Adjustable line slider:** drag the O/U line and hit rate recalculates instantly from raw game arrays, no server round-trip
-- **Trust score (0-100):** a weighted formula combining hit rate, sample size, line deviation from expected, recent trend, and bookmaker consensus. Condenses the analysis into a single number
-- **Parlay builder:** add NBA player props and soccer match/player legs to a shared sidebar. Combined odds and confidence calculated live
-- **AI parlay generator:** selects high-trust legs automatically and explains the reasoning
+- **Trust score (0-100):** a weighted formula combining hit rate, sample size, line deviation from expected, recent trend, and bookmaker consensus
+- **Parlay builder:** add NBA player props and soccer match/player legs to a shared sidebar with combined odds calculated live
+- **AI parlay generator:** selects high-trust legs automatically and explains reasoning
 - **Soccer win probability:** Poisson distribution model computing home/draw/away probabilities from expected goals
 
 ---
 
-## Sports covered
+## Planned sports coverage
 
 ### NBA
 Props: Points, Rebounds, Assists, Steals, Blocks, 3PM, PRA, PA, PR, RA
@@ -31,7 +31,7 @@ Props: Points, Rebounds, Assists, Steals, Blocks, 3PM, PRA, PA, PR, RA
 ### Soccer (Premier League, La Liga, Bundesliga, Serie A, Ligue 1)
 
 **Match Totals:**
-- O/U goals line with live Over%, BTTS%, expected total, avg goals
+- O/U goals line with Over%, BTTS%, expected total, avg goals
 - Win probability: Poisson model (home/draw/away) as stacked bar
 - Team goal props: per-team scoring line slider
 - Trust score: 5-factor weighted formula
@@ -44,9 +44,9 @@ Props: Points, Rebounds, Assists, Steals, Blocks, 3PM, PRA, PA, PR, RA
 
 ---
 
-## Tech stack
+## Tech stack (Planned)
 
-| Layer | Technology | Host |
+| Layer | Technology | Target Host |
 |---|---|---|
 | Frontend | React (Vite), Tailwind CSS | Vercel |
 | Backend | Flask (Python), Gunicorn | Render |
@@ -54,29 +54,25 @@ Props: Points, Rebounds, Assists, Steals, Blocks, 3PM, PRA, PA, PR, RA
 
 ---
 
-## Architecture highlights
+## Architecture highlights (Planned)
 
-### Caching strategy that survives cold starts
-Render's free tier spins down after 15 minutes of inactivity. A naive implementation would force every cold-start user to wait 30+ seconds for data. StatScout uses a layered cache:
+### Caching strategy for cold starts
+Render's free tier spins down after 15 minutes of inactivity. The planned solution uses a layered cache:
 
 1. In-memory dict (instant, lives for worker lifetime)
 2. `/tmp` JSON file (survives worker restarts, loaded at startup)
 3. Background thread rebuild (never blocks the request)
 4. UptimeRobot pings `/api/health` every 5 min to keep the service warm
 
-Result: users always get a response immediately, even on cold starts.
-
 ### Trust score formula (NBA)
-Rather than showing raw hit rate alone (which can be misleading with small samples or lucky streaks), each prop gets a 0-100 trust score:
+Rather than showing raw hit rate alone (which can be misleading with small samples), each prop will get a 0-100 trust score:
 
 ```
 Trust = (hitRate * 0.30) + (sampleSizeScore * 0.20) + (lineDeviationScore * 0.25) + (recentTrendScore * 0.15) + (bookmakerConsensusScore * 0.10)
 ```
 
-Human-readable labels: "Strong lean" / "Leaning over" / "I like these odds" / "Slight edge" / "Proceed with caution" / "Taking a longshot"
-
 ### Soccer win probability (Poisson model)
-For each fixture, expected home and away goals are derived from venue-specific historical averages. The Poisson distribution is then summed over 0-8 goals per team to compute P(home win), P(draw), P(away win):
+For each fixture, expected home and away goals will be derived from venue-specific historical averages. The Poisson distribution will be summed to compute P(home win), P(draw), P(away win):
 
 ```python
 for h in range(9):
@@ -87,24 +83,17 @@ for h in range(9):
         else: away_prob += p
 ```
 
-### Data integrity: catching mid-game stat corruption
-Early on, the NBA update script would run during live games, insert interim stats, then never update them (existing rows were silently skipped). This corrupted hit rates for dozens of players, some by 20+ points in the wrong direction.
-
-Fix: the update script now re-fetches and corrects any game from the last 3 days on every run, treating recent rows as potentially stale. A one-off correction script fixed 216 bad rows across the historical data.
-
 ### Soccer player data pipeline
-Player prop data comes from Understat's internal API (session-based scraping, no auth required with polite usage). The pipeline:
+Player prop data will come from Understat's API (session-based scraping). The pipeline will:
 
 1. Visit league/player page to obtain session cookies
 2. Call `getLeagueData/{league}/{season}` for player roster
 3. Call `getPlayerData/{id}` per player for match-by-match stats
 4. Incremental weekly updates, only fetches games since last known date per player
 
-Current database: ~1,100 soccer players, ~25,000+ game rows across 5 leagues.
-
 ---
 
-## Data sources
+## Data sources (Planned)
 
 | Source | Data |
 |---|---|
@@ -117,17 +106,41 @@ Current database: ~1,100 soccer players, ~25,000+ game rows across 5 leagues.
 
 ## Running locally
 
+### Prerequisites
+- Python 3.9+
+- Node.js 16+
+- PostgreSQL (or use a serverless connection string)
+
+### Backend setup
+
 ```bash
-# Backend
 cd backend
 pip install -r requirements.txt
 cp .env.example .env  # add your API keys
 python app.py
+```
 
-# Frontend
+Required env vars: `DATABASE_URL`, `ODDS_API_KEY`, `FOOTBALL_DATA_KEY`
+
+### Frontend setup
+
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Required env vars: `DATABASE_URL`, `ODDS_API_KEY`, `FOOTBALL_DATA_KEY`
+The frontend will run on `http://localhost:5173` by default.
+
+---
+
+## Project status
+
+This is an active development project. See the [issues](https://github.com/zoebur404/Scoutprops/issues) for upcoming features and current work.
+
+**Next milestones:**
+- [ ] Backend API setup and database schema
+- [ ] NBA data ingestion pipeline
+- [ ] Basic frontend layout and routing
+- [ ] Initial prop display and line slider
+- [ ] Trust score implementation
